@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="WorkLog" />
+  <title>WorkLog</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #f5f0eb; font-family: 'DM Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+    #app { max-width: 420px; margin: 0 auto; min-height: 100vh; }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 40px; height: 40px; border: 4px solid #e8e8e8; border-top-color: #e94560; border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+    /* Screens */
+    .screen { display: none; flex-direction: column; min-height: 100vh; padding-bottom: 40px; }
+    .screen.active { display: flex; }
+
+    /* Hero */
+    .hero { text-align: center; padding: 56px 24px 36px; background: linear-gradient(160deg, #1a1a2e 0%, #16213e 100%); }
+    .hero-icon { font-size: 52px; margin-bottom: 10px; }
+    .hero-title { color: #fff; font-size: 38px; font-weight: 800; letter-spacing: -1px; }
+    .hero-sub { color: #8892b0; margin-top: 8px; font-size: 15px; }
+
+    /* Top bar */
+    .top-bar { display: flex; justify-content: space-between; align-items: center; background: #1a1a2e; padding: 12px 16px; color: #fff; }
+    .wk-name { font-weight: 700; font-size: 16px; }
+    .wk-meta { font-size: 12px; color: #8892b0; margin-top: 2px; }
+    .timer { font-family: monospace; font-size: 22px; font-weight: 700; color: #e94560; }
+
+    /* Cards */
+    .card { background: #fff; margin: 12px 16px; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .ex-card { background: #fff; margin: 12px 16px; border-radius: 14px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+
+    /* Exercise header */
+    .ex-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .ex-name { font-weight: 700; font-size: 15px; color: #1a1a2e; }
+
+    /* Set rows */
+    .set-header { display: flex; gap: 8px; font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .set-header .col-num { width: 28px; }
+    .set-header .col-field { flex: 1; text-align: center; }
+    .set-header .col-del { width: 32px; }
+    .set-row { display: flex; flex-direction: row; gap: 8px; align-items: center; margin-bottom: 6px; width: 100%; }
+    .set-num { width: 28px; font-size: 14px; color: #888; text-align: center; flex-shrink: 0; }
+    .num-input { flex: 1; min-width: 0; border: 1.5px solid #e8e8e8; border-radius: 8px; padding: 7px 4px; font-size: 15px; text-align: center; background: #fafafa; outline: none; font-family: inherit; }
+    .btn-del-set { width: 32px; flex-shrink: 0; background: none; border: none; cursor: pointer; color: #bbb; font-size: 14px; padding: 0; }
+    .btn-add-set { background: none; border: 1.5px dashed #ddd; border-radius: 8px; padding: 7px 0; width: 100%; cursor: pointer; color: #888; font-size: 13px; margin-top: 4px; font-family: inherit; }
+
+    /* Preset grid */
+    .preset-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .preset-btn { font-size: 12px; padding: 5px 10px; border-radius: 20px; border: 1.5px solid #e0dcd8; background: #fafafa; cursor: pointer; color: #333; font-family: inherit; }
+    .preset-btn:active { background: #e94560; color: #fff; border-color: #e94560; }
+    .add-custom-row { display: flex; gap: 8px; margin-top: 8px; }
+
+    /* Buttons */
+    .btn-primary { display: block; width: calc(100% - 32px); margin: 16px 16px 0; background: linear-gradient(135deg, #e94560, #c23152); color: #fff; border: none; border-radius: 14px; padding: 16px; font-size: 15px; font-weight: 800; letter-spacing: 1px; cursor: pointer; font-family: inherit; }
+    .btn-secondary { display: block; width: 100%; background: #1a1a2e; color: #fff; border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; font-family: inherit; }
+    .btn-sm { background: #1a1a2e; color: #fff; border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap; font-family: inherit; }
+    .btn-ghost { background: none; border: none; cursor: pointer; color: #666; font-size: 14px; font-family: inherit; }
+    .btn-add-ex { background: none; border: none; width: 100%; font-size: 15px; color: #e94560; font-weight: 700; cursor: pointer; padding: 8px; font-family: inherit; }
+
+    /* Form */
+    label.field-label { font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; display: block; }
+    input.text-input, textarea.text-input { width: 100%; border: 1.5px solid #e8e8e8; border-radius: 10px; padding: 10px 12px; font-size: 15px; outline: none; font-family: inherit; }
+    textarea.text-input { resize: none; font-size: 14px; }
+    .notes-wrap { padding: 0 16px 8px; }
+
+    /* Done screen */
+    .done-hero { text-align: center; padding: 32px 24px 24px; background: linear-gradient(160deg, #1a1a2e, #16213e); }
+    .done-title { color: #fff; font-size: 26px; font-weight: 800; margin: 12px 0 20px; }
+    .stat-row { display: flex; justify-content: center; gap: 32px; }
+    .stat { display: flex; flex-direction: column; align-items: center; }
+    .stat-val { color: #e94560; font-size: 24px; font-weight: 800; }
+    .stat-label { color: #8892b0; font-size: 12px; margin-top: 2px; }
+    .summary-section { padding: 0 16px; margin-top: 8px; }
+    pre.summary-pre { background: #1a1a2e; color: #a8d8ea; border-radius: 10px; padding: 14px; font-size: 12px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; margin-top: 8px; font-family: monospace; }
+
+    /* Analysis */
+    .loading-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; flex: 1; }
+    .analysis-box { margin: 16px; background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06); min-height: 200px; }
+    .analysis-text { white-space: pre-wrap; word-break: break-word; font-size: 14px; line-height: 1.7; color: #1a1a2e; font-family: inherit; }
+
+    /* Scroll area in workout */
+    .workout-scroll { overflow-y: auto; flex: 1; }
+
+    /* Utility */
+    .mt8 { margin-top: 8px; }
+    .centered { margin: 16px auto; display: block; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME -->
+  <div id="screen-home" class="screen active">
+    <div class="hero">
+      <div class="hero-icon">💪</div>
+      <h1 class="hero-title">WorkLog</h1>
+      <p class="hero-sub">Track. Analyse. Improve.</p>
+    </div>
+    <div class="card">
+      <label class="field-label" for="workout-name">Workout name</label>
+      <input id="workout-name" class="text-input" type="text" value="Evening workout" placeholder="e.g. Evening workout" />
+    </div>
+    <button class="btn-primary" onclick="startWorkout()">START WORKOUT</button>
+  </div>
+
+  <!-- WORKOUT -->
+  <div id="screen-workout" class="screen">
+    <div class="top-bar">
+      <div>
+        <div class="wk-name" id="bar-wk-name"></div>
+        <div class="wk-meta" id="bar-wk-meta"></div>
+      </div>
+      <div class="timer" id="timer-display">00:00</div>
+    </div>
+    <div class="workout-scroll">
+      <div id="exercises-container"></div>
+      <div class="card" id="add-ex-card">
+        <button class="btn-add-ex" onclick="showExPicker()">＋ Add exercise</button>
+      </div>
+      <div id="ex-picker" style="display:none;" class="card">
+        <div class="preset-grid" id="preset-grid"></div>
+        <div class="add-custom-row">
+          <input id="custom-ex-input" class="text-input" type="text" placeholder="Custom exercise…" style="flex:1;" onkeydown="if(event.key==='Enter') addCustomExercise()" />
+          <button class="btn-sm" onclick="addCustomExercise()">Add</button>
+        </div>
+        <button class="btn-ghost mt8" onclick="hideExPicker()">Cancel</button>
+      </div>
+      <div class="notes-wrap">
+        <label class="field-label" for="session-notes">Session notes (optional)</label>
+        <textarea id="session-notes" class="text-input" rows="2" placeholder="How did it feel? Any issues?"></textarea>
+      </div>
+      <button class="btn-primary" style="margin-bottom:32px;" onclick="finishWorkout()">FINISH WORKOUT</button>
+    </div>
+  </div>
+
+  <!-- DONE -->
+  <div id="screen-done" class="screen">
+    <div class="done-hero">
+      <div style="font-size:48px;">🏁</div>
+      <h2 class="done-title">Workout complete!</h2>
+      <div class="stat-row">
+        <div class="stat"><span class="stat-val" id="stat-duration">00:00</span><span class="stat-label">Duration</span></div>
+        <div class="stat"><span class="stat-val" id="stat-exercises">0</span><span class="stat-label">Exercises</span></div>
+        <div class="stat"><span class="stat-val" id="stat-sets">0</span><span class="stat-label">Sets</span></div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="runAnalysis()">🤖 ANALYSE WITH CLAUDE</button>
+    <div class="summary-section">
+      <label class="field-label">Or copy &amp; paste into Claude:</label>
+      <pre class="summary-pre" id="summary-pre"></pre>
+      <button class="btn-secondary" onclick="copySummary()">Copy to clipboard</button>
+    </div>
+    <button class="btn-ghost centered" onclick="newWorkout()">New workout</button>
+  </div>
+
+  <!-- ANALYSIS -->
+  <div id="screen-analysis" class="screen">
+    <div class="top-bar">
+      <button class="btn-ghost" onclick="showScreen('done')" style="color:#8892b0;">← Back</button>
+      <span style="font-weight:700; color:#fff;">AI Analysis</span>
+      <span></span>
+    </div>
+    <div id="analysis-loading" class="loading-wrap">
+      <div class="spinner"></div>
+      <p style="color:#555; margin-top:16px;">Analysing your workout…</p>
+    </div>
+    <div id="analysis-result" class="analysis-box" style="display:none;">
+      <p class="analysis-text" id="analysis-text"></p>
+    </div>
+    <button class="btn-ghost centered" onclick="newWorkout()">New workout</button>
+  </div>
+
+</div>
+
+<script>
+  // ── State ──
+  let state = {
+    workoutName: "Evening workout",
+    exercises: [],   // { id, name, sets: [{reps, weight}] }
+    startTime: null,
+    startDisplay: "",
+    elapsed: 0,
+    notes: "",
+    timerInterval: null,
+  };
+
+  const PRESETS = [
+    "Leg press, 2 legs","Horizontal row","Abduction","Adduction",
+    "Leg curl","Leg extension","Chest press","Shoulder press",
+    "Lat pulldown","Cable row","Tricep pushdown","Bicep curl",
+    "Squat","Deadlift","Bench press","Pull-up","Dip"
+  ];
+
+  // ── Helpers ──
+  const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+  const nowStr = () => new Date().toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"});
+  const todayStr = () => new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  const uid = () => Date.now() + Math.random();
+
+  function showScreen(name) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById("screen-" + name).classList.add("active");
+    window.scrollTo(0,0);
+  }
+
+  // ── Home → Workout ──
+  function startWorkout() {
+    state.workoutName = document.getElementById("workout-name").value || "Workout";
+    state.exercises = [];
+    state.notes = "";
+    state.elapsed = 0;
+    state.startTime = Date.now();
+    state.startDisplay = nowStr();
+
+    document.getElementById("bar-wk-name").textContent = state.workoutName;
+    document.getElementById("bar-wk-meta").textContent = todayStr() + " · " + state.startDisplay;
+    document.getElementById("timer-display").textContent = "00:00";
+    document.getElementById("session-notes").value = "";
+    document.getElementById("exercises-container").innerHTML = "";
+    hideExPicker();
+
+    clearInterval(state.timerInterval);
+    state.timerInterval = setInterval(() => {
+      state.elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+      document.getElementById("timer-display").textContent = fmt(state.elapsed);
+    }, 1000);
+
+    // Build preset grid once
+    const grid = document.getElementById("preset-grid");
+    grid.innerHTML = "";
+    PRESETS.forEach(p => {
+      const b = document.createElement("button");
+      b.className = "preset-btn";
+      b.textContent = p;
+      b.onclick = () => addExercise(p);
+      grid.appendChild(b);
+    });
+
+    showScreen("workout");
+  }
+
+  // ── Exercise picker ──
+  function showExPicker() {
+    document.getElementById("add-ex-card").style.display = "none";
+    document.getElementById("ex-picker").style.display = "block";
+    document.getElementById("custom-ex-input").value = "";
+  }
+  function hideExPicker() {
+    document.getElementById("add-ex-card").style.display = "block";
+    document.getElementById("ex-picker").style.display = "none";
+  }
+  function addCustomExercise() {
+    const v = document.getElementById("custom-ex-input").value.trim();
+    if (v) addExercise(v);
+  }
+
+  // ── Add/remove exercises ──
+  function addExercise(name) {
+    const ex = { id: uid(), name, sets: [] };
+    state.exercises.push(ex);
+    renderExercise(ex);
+    hideExPicker();
+  }
+
+  function renderExercise(ex) {
+    const container = document.getElementById("exercises-container");
+    const card = document.createElement("div");
+    card.className = "ex-card";
+    card.id = "ex-" + ex.id;
+    card.innerHTML = `
+      <div class="ex-header">
+        <span class="ex-name">${ex.name}</span>
+        <button class="btn-ghost" onclick="removeExercise(${ex.id})">✕</button>
+      </div>
+      <div class="set-header">
+        <span class="col-num">Set</span>
+        <span class="col-field">Reps</span>
+        <span class="col-field">kg</span>
+        <span class="col-del"></span>
+      </div>
+      <div class="sets-list" id="sets-${ex.id}"></div>
+      <button class="btn-add-set" onclick="addSet(${ex.id})">+ Add set</button>
+    `;
+    container.insertBefore(card, document.getElementById("add-ex-card"));
+    addSet(ex.id); // start with one set
+  }
+
+  function removeExercise(id) {
+    state.exercises = state.exercises.filter(e => e.id !== id);
+    const el = document.getElementById("ex-" + id);
+    if (el) el.remove();
+  }
+
+  // ── Sets ──
+  function addSet(exId) {
+    const ex = state.exercises.find(e => e.id === exId);
+    if (!ex) return;
+    const prevWeight = ex.sets.length ? ex.sets[ex.sets.length-1].weight : 20;
+    const set = { reps: 12, weight: prevWeight };
+    ex.sets.push(set);
+    const si = ex.sets.length - 1;
+    renderSet(exId, si, set);
+  }
+
+  function renderSet(exId, si, set) {
+    const list = document.getElementById("sets-" + exId);
+    const row = document.createElement("div");
+    row.className = "set-row";
+    row.id = `set-${exId}-${si}`;
+    row.innerHTML = `
+      <span class="set-num">${si+1}</span>
+      <input type="number" class="num-input" value="${set.reps}" min="1"
+        onchange="updateSet(${exId}, ${si}, 'reps', this.value)" />
+      <input type="number" class="num-input" value="${set.weight}" min="0" step="0.5"
+        onchange="updateSet(${exId}, ${si}, 'weight', this.value)" />
+      <button class="btn-del-set" onclick="removeSet(${exId}, ${si})">✕</button>
+    `;
+    list.appendChild(row);
+  }
+
+  function updateSet(exId, si, field, val) {
+    const ex = state.exercises.find(e => e.id === exId);
+    if (ex && ex.sets[si]) ex.sets[si][field] = parseFloat(val) || 0;
+  }
+
+  function removeSet(exId, si) {
+    const ex = state.exercises.find(e => e.id === exId);
+    if (!ex) return;
+    ex.sets.splice(si, 1);
+    // Re-render all sets for this exercise
+    const list = document.getElementById("sets-" + exId);
+    list.innerHTML = "";
+    ex.sets.forEach((s, i) => renderSet(exId, i, s));
+  }
+
+  // ── Finish ──
+  function finishWorkout() {
+    clearInterval(state.timerInterval);
+    state.notes = document.getElementById("session-notes").value;
+
+    document.getElementById("stat-duration").textContent = fmt(state.elapsed);
+    document.getElementById("stat-exercises").textContent = state.exercises.length;
+    document.getElementById("stat-sets").textContent = state.exercises.reduce((a,e)=>a+e.sets.length,0);
+
+    const summary = buildSummary();
+    document.getElementById("summary-pre").textContent = summary;
+    showScreen("done");
+  }
+
+  // ── Summary ──
+  function buildSummary() {
+    const lines = [
+      `Workout: ${state.workoutName}`,
+      `Date: ${todayStr()} | Start: ${state.startDisplay} | Duration: ${fmt(state.elapsed)}`,
+      "",
+    ];
+    state.exercises.forEach(ex => {
+      lines.push(`Exercise: ${ex.name}`);
+      ex.sets.forEach((s,i) => lines.push(`  Set ${i+1}: ${s.reps} reps × ${s.weight} kg`));
+      const vol = ex.sets.reduce((a,s)=>a+s.reps*s.weight,0);
+      lines.push(`  → Total volume: ${vol} kg`);
+      lines.push("");
+    });
+    if (state.notes.trim()) lines.push(`Notes: ${state.notes}`);
+    return lines.join("\n");
+  }
+
+  function copySummary() {
+    const text = document.getElementById("summary-pre").textContent;
+    navigator.clipboard?.writeText(text).then(() => alert("Copied!"));
+  }
+
+  // ── Claude Analysis ──
+  async function runAnalysis() {
+    showScreen("analysis");
+    document.getElementById("analysis-loading").style.display = "flex";
+    document.getElementById("analysis-result").style.display = "none";
+
+    const summary = buildSummary();
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: `You are a knowledgeable fitness coach. Analyse workout data and provide:
+1. A brief performance summary (2-3 sentences)
+2. Volume totals per exercise and overall
+3. 2-3 specific, actionable suggestions for next session (progressive overload, exercise order, rest, form tips)
+4. One encouragement line
+Be concise, practical, and specific to the numbers given. Format clearly with headers.`,
+          messages: [{ role: "user", content: `Please analyse this workout:\n\n${summary}` }]
+        })
+      });
+      const data = await res.json();
+      const text = data.content?.filter(b=>b.type==="text").map(b=>b.text).join("\n") || "No response received.";
+      document.getElementById("analysis-text").textContent = text;
+    } catch(e) {
+      document.getElementById("analysis-text").textContent = "Could not connect to Claude. Check your internet connection and try again.";
+    }
+    document.getElementById("analysis-loading").style.display = "none";
+    document.getElementById("analysis-result").style.display = "block";
+  }
+
+  // ── New workout ──
+  function newWorkout() {
+    showScreen("home");
+  }
+</script>
+</body>
+</html>
