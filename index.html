@@ -203,7 +203,8 @@
   const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
   const nowStr = () => new Date().toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"});
   const todayStr = () => new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
-  const uid = () => Date.now() + Math.random();
+  let _uidCounter = 1;
+  const uid = () => _uidCounter++;
 
   function showScreen(name) {
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -219,6 +220,7 @@
     state.elapsed = 0;
     state.startTime = Date.now();
     state.startDisplay = nowStr();
+    _uidCounter = 1;
 
     document.getElementById("bar-wk-name").textContent = state.workoutName;
     document.getElementById("bar-wk-meta").textContent = todayStr() + " · " + state.startDisplay;
@@ -289,7 +291,7 @@
       <div class="sets-list" id="sets-${ex.id}"></div>
       <button class="btn-add-set" onclick="addSet(${ex.id})">+ Add set</button>
     `;
-    container.insertBefore(card, document.getElementById("add-ex-card"));
+    container.appendChild(card);
     addSet(ex.id); // start with one set
   }
 
