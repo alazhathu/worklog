@@ -178,6 +178,16 @@
   var timerInterval = null;
   var idCounter = 0;
   var lastSummary = "";
+  var usedNames = {};
+
+  // Weight memory (localStorage)
+  function savedWeight(name) {
+    try { var v = localStorage.getItem("wl_w_" + name); return v !== null ? parseFloat(v) : 20; }
+    catch(e) { return 20; }
+  }
+  function saveWeight(name, weight) {
+    try { localStorage.setItem("wl_w_" + name, String(weight)); } catch(e) {}
+  }
 
   var PRESETS = [
     "Leg press, 2 legs","Horizontal row","Abduction","Adduction",
@@ -205,15 +215,19 @@
     window.scrollTo(0, 0);
   }
 
-  // ── Build preset buttons ──
-  var grid = g("preset-grid");
-  PRESETS.forEach(function(p) {
-    var b = document.createElement("button");
-    b.className = "preset-btn";
-    b.textContent = p;
-    (function(name){ b.addEventListener("click", function(){ addExercise(name); }); })(p);
-    grid.appendChild(b);
-  });
+  // ── Build preset buttons (refreshed each time picker opens) ──
+  function refreshPresets() {
+    var grid = g("preset-grid");
+    grid.innerHTML = "";
+    for (var pi = 0; pi < PRESETS.length; pi++) {
+      if (usedNames[PRESETS[pi]]) continue; // hide if already in session
+      var b = document.createElement("button");
+      b.className = "preset-btn";
+      b.textContent = PRESETS[pi];
+      (function(name){ b.addEventListener("click", function(){ addExercise(name); }); })(PRESETS[pi]);
+      grid.appendChild(b);
+    }
+  }
 
   // ── Static button wiring ──
   g("btn-start").addEventListener("click", startWorkout);
@@ -222,6 +236,7 @@
     g("add-ex-wrap").style.display = "none";
     g("picker-card").style.display = "block";
     g("custom-input").value = "";
+    refreshPresets();
   });
 
   g("btn-hide-picker").addEventListener("click", hidePicker);
@@ -260,6 +275,7 @@
   function startWorkout() {
     wkName = g("workout-name").value.trim() || "Workout";
     exercises = [];
+    usedNames = {};
     elapsed = 0;
     idCounter = 0;
     g("ex-list").innerHTML = "";
@@ -284,7 +300,8 @@
   // ── Add exercise ──
   function addExercise(name) {
     var id = nextId();
-    exercises.push({ id: id, name: name, sets: [] });
+    usedNames[name] = true;
+    exercises.push({ id: id, name: name, sets: [], savedWeight: savedWeight(name) });
     renderExercise(id, name);
     hidePicker();
     addSet(id);
@@ -333,6 +350,9 @@
   }
 
   function removeExercise(id) {
+    for (var i = 0; i < exercises.length; i++) {
+      if (exercises[i].id === id) { usedNames[exercises[i].name] = false; break; }
+    }
     exercises = exercises.filter(function(e) { return e.id !== id; });
     var card = g("ex-" + id);
     if (card) card.parentNode.removeChild(card);
@@ -343,7 +363,7 @@
     var ex = null;
     for (var i = 0; i < exercises.length; i++) { if (exercises[i].id === exId) { ex = exercises[i]; break; } }
     if (!ex) return;
-    var prevWeight = ex.sets.length ? ex.sets[ex.sets.length - 1].weight : 20;
+    var prevWeight = ex.sets.length ? ex.sets[ex.sets.length - 1].weight : (ex.savedWeight || 20);
     ex.sets.push({ reps: 12, weight: prevWeight });
     renderSet(exId, ex.sets.length - 1, ex.sets[ex.sets.length - 1]);
   }
@@ -382,7 +402,11 @@
     (function(eid, idx){ kgEl.addEventListener("change", function() {
       var ex = null;
       for (var i = 0; i < exercises.length; i++) { if (exercises[i].id === eid) { ex = exercises[i]; break; } }
-      if (ex && ex.sets[idx] !== undefined) ex.sets[idx].weight = parseFloat(this.value) || 0;
+      if (ex && ex.sets[idx] !== undefined) {
+        ex.sets[idx].weight = parseFloat(this.value) || 0;
+        saveWeight(ex.name, ex.sets[idx].weight);
+        ex.savedWeight = ex.sets[idx].weight;
+      }
     }); })(exId, si);
 
     var delBtn = document.createElement("button");
