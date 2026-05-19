@@ -189,6 +189,21 @@
     try { localStorage.setItem("wl_w_" + name, String(weight)); } catch(e) {}
   }
 
+  // Custom exercise memory
+  function loadCustomExercises() {
+    try { var v = localStorage.getItem("wl_custom"); return v ? JSON.parse(v) : []; }
+    catch(e) { return []; }
+  }
+  function saveCustomExercise(name) {
+    try {
+      var list = loadCustomExercises();
+      if (list.indexOf(name) === -1) { list.push(name); localStorage.setItem("wl_custom", JSON.stringify(list)); }
+    } catch(e) {}
+  }
+
+  // Merge presets with saved custom exercises
+  var ALL_PRESETS = PRESETS.concat(loadCustomExercises());
+
   var PRESETS = [
     "Leg press, 2 legs","Horizontal row","Abduction","Adduction",
     "Leg curl","Leg extension","Chest press","Shoulder press",
@@ -219,12 +234,12 @@
   function refreshPresets() {
     var grid = g("preset-grid");
     grid.innerHTML = "";
-    for (var pi = 0; pi < PRESETS.length; pi++) {
-      if (usedNames[PRESETS[pi]]) continue; // hide if already in session
+    for (var pi = 0; pi < ALL_PRESETS.length; pi++) {
+      if (usedNames[ALL_PRESETS[pi]]) continue; // hide if already in session
       var b = document.createElement("button");
       b.className = "preset-btn";
-      b.textContent = PRESETS[pi];
-      (function(name){ b.addEventListener("click", function(){ addExercise(name); }); })(PRESETS[pi]);
+      b.textContent = ALL_PRESETS[pi];
+      (function(name){ b.addEventListener("click", function(){ addExercise(name); }); })(ALL_PRESETS[pi]);
       grid.appendChild(b);
     }
   }
@@ -243,13 +258,23 @@
 
   g("btn-add-custom").addEventListener("click", function() {
     var v = g("custom-input").value.trim();
-    if (v) addExercise(v);
+    if (!v) return;
+    if (ALL_PRESETS.indexOf(v) === -1) {
+      saveCustomExercise(v);
+      ALL_PRESETS.push(v);
+    }
+    addExercise(v);
   });
 
   g("custom-input").addEventListener("keydown", function(e) {
     if (e.key === "Enter") {
       var v = g("custom-input").value.trim();
-      if (v) addExercise(v);
+      if (!v) return;
+      if (ALL_PRESETS.indexOf(v) === -1) {
+        saveCustomExercise(v);
+        ALL_PRESETS.push(v);
+      }
+      addExercise(v);
     }
   });
 
